@@ -29,10 +29,7 @@ app.get('/api/download', (req, res) => {
       }
 
     }
-
-    res.json({
-        contents
-    });
+    res.json(contents);
 });
 
 app.post('/api/bulkUpload', (req,res) =>{
