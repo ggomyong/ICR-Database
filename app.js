@@ -21,17 +21,17 @@ app.get('/api/download', (req, res) => {
       let id=list[x];
       if (Number(id)>0) {
         let path='./database/'+id+'.icr';
-        if (fs.existsSync(path)) {
-          let icr=JSON.parse(fs.readFileSync(path));
+          let raw=fs.readFileSync(path)
+          //console.log(raw);
+          let icr=JSON.parse(raw);
+          //console.log(icr);
           contents.push(icr);
-        }
-
       }
 
     }
 
     res.json({
-        'message': contents
+        contents
     });
 });
 
@@ -41,10 +41,8 @@ app.post('/api/bulkUpload', (req,res) =>{
   //console.log(content);
   for (let x=0; x<content.length; x++) {
     let icr=content[x];
-    console.log(JSON.stringify(icr));
     fs.writeFile('./database/'+icr.id+'.icr', JSON.stringify(icr), function (err) {
       if (err) throw err;
-      console.log('Saved!');
     });
   }
   res.json({
