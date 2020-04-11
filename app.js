@@ -43,7 +43,7 @@ app.post('/api/bulkUpload', (req,res) =>{
     });
   }
   res.json({
-      'message': 'File uploaded successfully'
+      'message': 'ICR Bulk Upload Successful'
   });
 });
 
@@ -57,8 +57,8 @@ app.post('/api/upload', (req, res) => {
     console.log('Saved!');
   });
   res.json({
-      'message': 'File uploaded successfully'
+      'message': 'Individual ICR Upload Successful'
   });
 });
 
-app.listen(port, () => console.log(`Example app listening on port ${port}!`))
+app.listen(port, () => console.log(`ICR Database app listening on port ${port}!`))
