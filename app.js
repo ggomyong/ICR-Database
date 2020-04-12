@@ -11,6 +11,16 @@ app.use(bodyParser.urlencoded({limit: "50mb", extended: true, parameterLimit:500
 app.use(express.json({limit: '50mb'}));
 app.use(express.urlencoded({limit: '50mb'}));
 
+app.get('/api/getIcr', (req, res) => {
+  let fs = require('fs');
+  let content=JSON.stringify(req.body);
+  let id=req.query.id;
+
+  let raw=fs.readFileSync('./database/'+id+'.icr');
+  let icr=JSON.parse(raw);
+  res.json(icr);
+});
+
 app.get('/api/download', (req, res) => {
     //gather all ICRs and combine it and then return it to the requestor
     let fs = require('fs');
