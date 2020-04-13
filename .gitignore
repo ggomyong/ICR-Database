@@ -1,2 +1,4 @@
 
 database/*
+icrDatabase.bat
+nssm.exe
