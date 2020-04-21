@@ -1,3 +1,4 @@
+const compression = require('compression');
 const  express  =  require('express');
 const bodyParser = require("body-parser");
 const  multipart  =  require('connect-multiparty');
@@ -6,10 +7,17 @@ const  multipartMiddleware  =  multipart({ uploadDir:  './database' });
 const  app  =  express()
 const  port  =  3000
 
+app.use (compression())
 app.use(bodyParser.json({limit: "50mb"}));
 app.use(bodyParser.urlencoded({limit: "50mb", extended: true, parameterLimit:50000}));
 app.use(express.json({limit: '50mb'}));
 app.use(express.urlencoded({limit: '50mb'}));
+
+app.get('/api/hello', (req, res) =>{
+  res.json({
+      'message': 'Hello world!'
+  });
+});
 
 app.get('/api/getIcr', (req, res) => {
   let fs = require('fs');
@@ -69,6 +77,174 @@ app.post('/api/upload', (req, res) => {
   res.json({
       'message': 'Individual ICR Upload Successful'
   });
+});
+
+app.post('/api/generateIcrs', (req,res)=>{
+  let fs = require('fs');
+  let requests;
+  try {
+    requests=JSON.parse(req.body.requests);
+  }
+  catch {
+    requests=req.body.requests;
+  }
+
+  // first read all ICRs
+  let list=JSON.parse(fs.readFileSync('./database/IcrMaster.icr')).members;
+  let icrs=[];
+
+  for (let x=0; x<list.length; x++) {
+    let id=list[x];
+    if (Number(id)>0) {
+      let path='./database/'+id+'.icr';
+        let raw=fs.readFileSync(path)
+        //console.log(raw);
+        let icr=JSON.parse(raw);
+        //console.log(icr);
+        icrs.push(icr);
+    }
+  }
+  let returnable=new Object();
+  for (let icr of icrs) {
+    if (icr.status.toLowerCase()=='withdrawn' || icr.status.toLowerCase()=='retired' || icr.status.toLowerCase()=='expired') continue;
+    if ((icr.expires!=undefined || icr.expires!=null) && icr.expires.length>0) continue;
+    for (let request of requests) {
+      if (request.done) continue;
+      let type=request.type;
+      let value=request.value;
+      let subvalue=request.subvalue;
+      if (subvalue=='@') subvalue='';
+      let location=request.location;
+      let method=request.method;
+      let direction=request.direction;
+      let routines=request.routines;
+
+      if (routines==null || routines==undefined) continue;
+
+      for (let i=0; i<routines.length; i++) {
+        if (returnable[routines[i]]==undefined || returnable[routines[i]]==null){
+          returnable[routines[i]] = new Object();
+        }
+      }
+
+      if (icr.type == type) {
+        if (type=='G') {
+          if (Number(value)>0) {
+            if (icr.file != value) {
+              continue;
+            }
+          }
+          else {
+            if (icr.value != value) {
+              continue;
+            }
+          }
+
+          if (Number(subvalue)>0 || !subvalue.includes('(')) {
+            if (icr.fields!=null && icr.fields.length>0) {
+              for (let field of icr.fields) {
+                if (subvalue.includes('\'')){
+                  subvalue=subvalue.replace(/'/g, '');
+                }
+                if (field.value==subvalue) {
+                  if (method=='Direct' && field.method == 'Fileman') break;
+                  if (direction == 'Write' && field.direction=='Read') break;
+                  if (direction == 'Read' && field.direction=='Write') break;
+                  //hit
+                  for (let i=0; i<routines.length; i++) {
+                    if (returnable[routines[i]][icr.id]==undefined || returnable[routines[i]][icr.id]==null) {
+                      returnable[routines[i]][icr.id]=' ; Reference to '+icr.value+ ' supported by ICR # '+ icr.id + ' (';
+                    }
+                    returnable[routines[i]][icr.id]+=subvalue+',';
+                    request.done=true;
+                  }
+                  break;
+                }
+              }
+            }
+          }
+          if (request.done!=true && Number(subvalue)!=+subvalue) {
+            for (let descr of icr.description) {
+              if (descr.includes(subvalue)) {
+                //hit
+                for (let i=0; i<routines.length; i++) {
+                  if (returnable[routines[i]][icr.id]==undefined || returnable[routines[i]][icr.id]==null) {
+                    returnable[routines[i]][icr.id]=' ; Reference to '+icr.value+ ' supported by ICR # '+ icr.id + ' (';
+                  }
+                  returnable[routines[i]][icr.id]+=subvalue+',';
+                }
+                request.done=true;
+              }
+            }
+          }
+        }
+        else if (type=='R') {
+          if (icr.value==value) {
+            if (subvalue=='') {
+              //hit
+              request.done=true;
+              for (let i=0; i<routines.length; i++) {
+                if (returnable[routines[i]][icr.id]==undefined || returnable[routines[i]][icr.id]==null) {
+                  returnable[routines[i]][icr.id]=' ; Reference to '+icr.value+ ' supported by ICR # '+ icr.id+ ' (';
+                }
+              }
+            }
+            else {
+              for (let tag of icr.tags) {
+                if (tag.includes('(')) tag=tag.split('(')[0];
+                if (tag.includes('$$')) tag=tag.split('$$')[1];
+                if (tag.includes('\r'))tag=tag.split('\r')[0];
+                if (tag==subvalue) {
+                  request.done=true;
+                  for (let i=0; i<routines.length; i++) {
+                    if (returnable[routines[i]][icr.id]==undefined || returnable[routines[i]][icr.id]==null) {
+                      returnable[routines[i]][icr.id]=' ; Reference to '+icr.value+ ' supported by ICR # '+ icr.id+ ' (';
+                    }
+                    returnable[routines[i]][icr.id]+=subvalue+','
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  for (request of requests) {
+    if (request.done) continue;
+    let routines=request.routines;
+    let value=request.value;
+    let subvalue=request.subvalue;
+
+    for (let i=0; i<routines.length; i++) {
+      if (returnable[routines[i]]["NA"+request.value]==undefined || returnable[routines[i]]["NA"+request.value]==null) {
+        returnable[routines[i]]["NA"+request.value]=' ; Reference to '+request.value+ ' supported by ICR # NA (';
+      }
+      returnable[routines[i]]["NA"+request.value]+=subvalue+',';
+    }
+  }
+  let reformed=new Array();
+
+  Object.keys(returnable).forEach(function(key,index) {
+    reformed.push(">>"+key);
+    reformed.push(" ; Documented API's and Integration Agreements");
+    reformed.push(" ; -------------------------------------------");
+    Object.keys(returnable[key]).forEach(function (k1,i1){
+      let str=returnable[key][k1];
+      if (str.slice(-1)==',') {
+        str=str.slice(0,-1)+')';
+        //returnable[key][k1]=str;
+      }
+      else if (str.slice(-1)=='(') {
+        str=str.slice(0,-2);
+        //returnable[key][k1]=str;
+      }
+      reformed.push(str);
+    });
+    reformed.push(" ;");
+  });
+
+  res.json(reformed);
 });
 
 app.listen(port, () => console.log(`ICR Database app listening on port ${port}!`))
