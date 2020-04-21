@@ -164,6 +164,9 @@ app.post('/api/generateIcrs', (req,res)=>{
             }
           }
           if (request.done!=true && Number(subvalue)!=+subvalue) {
+            if (Number(subvalue)!=+subvalue && !subvalue.includes(',')) {
+              subvalue='\''+subvalue+'\'';
+            }
             for (let descr of icr.description) {
               if (descr.includes(subvalue)) {
                 //hit
@@ -171,6 +174,7 @@ app.post('/api/generateIcrs', (req,res)=>{
                   if (returnable[routines[i]][icr.id]==undefined || returnable[routines[i]][icr.id]==null) {
                     returnable[routines[i]][icr.id]=' ; Reference to '+icr.value+ ' supported by ICR # '+ icr.id + ' (';
                   }
+                  if (subvalue.includes(',')) subvalue='['+subvalue+']';
                   returnable[routines[i]][icr.id]+=subvalue+',';
                 }
                 request.done=true;
@@ -220,12 +224,13 @@ app.post('/api/generateIcrs', (req,res)=>{
       if (returnable[routines[i]]["NA"+request.value]==undefined || returnable[routines[i]]["NA"+request.value]==null) {
         returnable[routines[i]]["NA"+request.value]=' ; Reference to '+request.value+ ' supported by ICR # NA (';
       }
+      if (subvalue.includes(',')) subvalue='['+subvalue+']';
       returnable[routines[i]]["NA"+request.value]+=subvalue+',';
     }
   }
   let reformed=new Array();
 
-  Object.keys(returnable).forEach(function(key,index) {
+  Object.keys(returnable).sort().forEach(function(key,index) {
     reformed.push(">>"+key);
     reformed.push(" ; Documented API's and Integration Agreements");
     reformed.push(" ; -------------------------------------------");
