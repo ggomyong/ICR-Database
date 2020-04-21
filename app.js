@@ -82,6 +82,7 @@ app.post('/api/upload', (req, res) => {
 app.post('/api/generateIcrs', (req,res)=>{
   let fs = require('fs');
   let requests;
+
   try {
     requests=JSON.parse(req.body.requests);
   }
@@ -108,8 +109,9 @@ app.post('/api/generateIcrs', (req,res)=>{
   for (let icr of icrs) {
     if (icr.status.toLowerCase()=='withdrawn' || icr.status.toLowerCase()=='retired' || icr.status.toLowerCase()=='expired') continue;
     if ((icr.expires!=undefined || icr.expires!=null) && icr.expires.length>0) continue;
-    for (let request of requests) {
-      if (request.done) continue;
+    for (let i=0; i<requests.length; i++) {
+      let request=requests[i];
+      if (request.done && request.type!='R') continue;
       let type=request.type;
       let value=request.value;
       let subvalue=request.subvalue;
@@ -129,6 +131,7 @@ app.post('/api/generateIcrs', (req,res)=>{
 
       if (icr.type == type) {
         if (type=='G') {
+          if (icr.value==undefined || icr.value==null|| icr.value==''||icr.value.length==0) icr.value=icr.file;
           if (Number(value)>0) {
             if (icr.file != value) {
               continue;
@@ -155,8 +158,10 @@ app.post('/api/generateIcrs', (req,res)=>{
                     if (returnable[routines[i]][icr.id]==undefined || returnable[routines[i]][icr.id]==null) {
                       returnable[routines[i]][icr.id]=' ; Reference to '+icr.value+ ' supported by ICR # '+ icr.id + ' (';
                     }
-                    returnable[routines[i]][icr.id]+=subvalue+',';
+                    let subvalueArray= returnable[routines[i]][icr.id].split(',');
+                    if (!subvalueArray.includes(subvalue)) returnable[routines[i]][icr.id]+=subvalue+',';
                     request.done=true;
+                    requests[i]=request;
                   }
                   break;
                 }
@@ -164,7 +169,7 @@ app.post('/api/generateIcrs', (req,res)=>{
             }
           }
           if (request.done!=true && Number(subvalue)!=+subvalue) {
-            if (Number(subvalue)!=+subvalue && !subvalue.includes(',')) {
+            if (isNaN(subvalue) && !subvalue.includes(',') && !subvalue.includes('\'')) {
               subvalue='\''+subvalue+'\'';
             }
             for (let descr of icr.description) {
@@ -174,10 +179,12 @@ app.post('/api/generateIcrs', (req,res)=>{
                   if (returnable[routines[i]][icr.id]==undefined || returnable[routines[i]][icr.id]==null) {
                     returnable[routines[i]][icr.id]=' ; Reference to '+icr.value+ ' supported by ICR # '+ icr.id + ' (';
                   }
-                  if (subvalue.includes(',')) subvalue='['+subvalue+']';
-                  returnable[routines[i]][icr.id]+=subvalue+',';
+                  if (subvalue.includes(',') && !subvalue.includes('[')) subvalue='['+subvalue+']';
+                  let subvalueArray= returnable[routines[i]][icr.id].split(',');
+                  if (!subvalueArray.includes(subvalue)) returnable[routines[i]][icr.id]+=subvalue+',';
                 }
                 request.done=true;
+                requests[i]=request;
               }
             }
           }
@@ -187,6 +194,7 @@ app.post('/api/generateIcrs', (req,res)=>{
             if (subvalue=='') {
               //hit
               request.done=true;
+              requests[i]=request;
               for (let i=0; i<routines.length; i++) {
                 if (returnable[routines[i]][icr.id]==undefined || returnable[routines[i]][icr.id]==null) {
                   returnable[routines[i]][icr.id]=' ; Reference to '+icr.value+ ' supported by ICR # '+ icr.id+ ' (';
@@ -200,11 +208,13 @@ app.post('/api/generateIcrs', (req,res)=>{
                 if (tag.includes('\r'))tag=tag.split('\r')[0];
                 if (tag==subvalue) {
                   request.done=true;
+                  requests[i]=request;
                   for (let i=0; i<routines.length; i++) {
                     if (returnable[routines[i]][icr.id]==undefined || returnable[routines[i]][icr.id]==null) {
                       returnable[routines[i]][icr.id]=' ; Reference to '+icr.value+ ' supported by ICR # '+ icr.id+ ' (';
                     }
-                    returnable[routines[i]][icr.id]+=subvalue+','
+                    let subvalueArray= returnable[routines[i]][icr.id].split(',');
+                    if (!subvalueArray.includes(subvalue)) returnable[routines[i]][icr.id]+=subvalue+','
                   }
                 }
               }
@@ -212,20 +222,27 @@ app.post('/api/generateIcrs', (req,res)=>{
           }
         }
       }
+      requests[i]=request;
     }
   }
-  for (request of requests) {
+
+  for (let i=0; i<requests.length; i++) {
+
+    let request=requests[i];
     if (request.done) continue;
     let routines=request.routines;
     let value=request.value;
     let subvalue=request.subvalue;
-
+    if (isNaN(subvalue) && !subvalue.includes(',') && !subvalue.includes('\'') && request.type=='G') {
+      subvalue='\''+subvalue+'\'';
+    }
     for (let i=0; i<routines.length; i++) {
       if (returnable[routines[i]]["NA"+request.value]==undefined || returnable[routines[i]]["NA"+request.value]==null) {
         returnable[routines[i]]["NA"+request.value]=' ; Reference to '+request.value+ ' supported by ICR # NA (';
       }
-      if (subvalue.includes(',')) subvalue='['+subvalue+']';
-      returnable[routines[i]]["NA"+request.value]+=subvalue+',';
+      if (subvalue.includes(',') && !subvalue.includes('[')) subvalue='['+subvalue+']';
+      let subvalueArray= returnable[routines[i]]["NA"+request.value].split(',');
+      if (!subvalueArray.includes(subvalue)) returnable[routines[i]]["NA"+request.value]+=subvalue+',';
     }
   }
   let reformed=new Array();
@@ -248,7 +265,6 @@ app.post('/api/generateIcrs', (req,res)=>{
     });
     reformed.push(" ;");
   });
-
   res.json(reformed);
 });
 
