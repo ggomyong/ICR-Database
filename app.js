@@ -109,8 +109,8 @@ app.post('/api/generateIcrs', (req,res)=>{
   for (let icr of icrs) {
     if (icr.status.toLowerCase()=='withdrawn' || icr.status.toLowerCase()=='retired' || icr.status.toLowerCase()=='expired') continue;
     if ((icr.expires!=undefined || icr.expires!=null) && icr.expires.length>0) continue;
-    for (let i=0; i<requests.length; i++) {
-      let request=requests[i];
+    for (let reqIndex=0; reqIndex<requests.length; reqIndex++) {
+      let request=requests[reqIndex];
       if (request.done && request.type!='R') continue;
       let type=request.type;
       let value=request.value;
@@ -161,7 +161,7 @@ app.post('/api/generateIcrs', (req,res)=>{
                     let subvalueArray= returnable[routines[i]][icr.id].split(',');
                     if (!subvalueArray.includes(subvalue)) returnable[routines[i]][icr.id]+=subvalue+',';
                     request.done=true;
-                    requests[i]=request;
+                    requests[reqIndex]=request;
                   }
                   break;
                 }
@@ -184,7 +184,7 @@ app.post('/api/generateIcrs', (req,res)=>{
                   if (!subvalueArray.includes(subvalue)) returnable[routines[i]][icr.id]+=subvalue+',';
                 }
                 request.done=true;
-                requests[i]=request;
+                requests[reqIndex]=request;
               }
             }
           }
@@ -194,7 +194,7 @@ app.post('/api/generateIcrs', (req,res)=>{
             if (subvalue=='') {
               //hit
               request.done=true;
-              requests[i]=request;
+              requests[reqIndex]=request;
               for (let i=0; i<routines.length; i++) {
                 if (returnable[routines[i]][icr.id]==undefined || returnable[routines[i]][icr.id]==null) {
                   returnable[routines[i]][icr.id]=' ; Reference to '+icr.value+ ' supported by ICR # '+ icr.id+ ' (';
@@ -208,7 +208,7 @@ app.post('/api/generateIcrs', (req,res)=>{
                 if (tag.includes('\r'))tag=tag.split('\r')[0];
                 if (tag==subvalue) {
                   request.done=true;
-                  requests[i]=request;
+                  requests[reqIndex]=request;
                   for (let i=0; i<routines.length; i++) {
                     if (returnable[routines[i]][icr.id]==undefined || returnable[routines[i]][icr.id]==null) {
                       returnable[routines[i]][icr.id]=' ; Reference to '+icr.value+ ' supported by ICR # '+ icr.id+ ' (';
@@ -222,12 +222,11 @@ app.post('/api/generateIcrs', (req,res)=>{
           }
         }
       }
-      requests[i]=request;
+      requests[reqIndex]=request;
     }
   }
 
   for (let i=0; i<requests.length; i++) {
-
     let request=requests[i];
     if (request.done) continue;
     let routines=request.routines;
