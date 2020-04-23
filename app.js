@@ -178,7 +178,12 @@ app.post('/api/generateIcrs', (req,res)=>{
                     returnable[routines[i]][icr.id]=' ; Reference to '+icr.value+ ' supported by ICR # '+ icr.id + ' (';
                   }
                   let subvalueArray= returnable[routines[i]][icr.id].split(',');
-                  if (!subvalueArray.includes(subvalue)) returnable[routines[i]][icr.id]+=subvalue+',';
+                  if (!subvalueArray.includes(subvalue)) {
+                    if (parent.length>0 && !isNaN(parent) && !isNaN(value) && parent!=value) {
+                      subvalue='#'+value+'['+subvalue+']';
+                    }
+                    returnable[routines[i]][icr.id]+=subvalue+',';
+                  }
                   request.done=true;
                   requests[reqIndex]=request;
                 }
