@@ -150,9 +150,15 @@ app.post('/api/generateIcrs', (req,res)=>{
                   subvalue=subvalue.replace(/'/g, '');
                 }
                 if (field.value==subvalue) {
-                  if (method=='Direct' && field.method == 'Fileman') break;
-                  if (direction == 'Write' && field.direction=='Read') break;
-                  if (direction == 'Read' && field.direction=='Write') break;
+                  if (!isNaN(value)) {
+                    if (value!=field.file) break;
+                  }
+                  if (field.value!="*") {
+                    if (method=='Direct' && field.method == 'Fileman') break;
+                    if (direction == 'Write' && field.direction=='Read') break;
+                    if (direction == 'Read' && field.direction=='Write') break;
+                  }
+
                   //hit
                   for (let i=0; i<routines.length; i++) {
                     if (returnable[routines[i]][icr.id]==undefined || returnable[routines[i]][icr.id]==null) {
