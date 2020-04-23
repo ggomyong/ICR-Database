@@ -114,12 +114,17 @@ app.post('/api/generateIcrs', (req,res)=>{
       if (request.done && request.type!='R') continue;
       let type=request.type;
       let value=request.value;
+      value=value.replace(/^/g, '');
       let subvalue=request.subvalue;
       if (subvalue=='@') subvalue='';
       let location=request.location;
       let method=request.method;
       let direction=request.direction;
       let routines=request.routines;
+      let parent=request.parent;
+      if (parent==undefined || parent==null) {
+        parent='';
+      }
 
       if (routines==null || routines==undefined) continue;
 
@@ -132,48 +137,56 @@ app.post('/api/generateIcrs', (req,res)=>{
       if (icr.type == type) {
         if (type=='G') {
           if (icr.value==undefined || icr.value==null|| icr.value==''||icr.value.length==0) icr.value=icr.file;
-          if (Number(value)>0) {
-            if (icr.file != value) {
+
+          if (isNaN(value)) {
+            if (isNaN(icr.value) && icr.value != value) {
               continue;
             }
           }
           else {
-            if (icr.value != value) {
+            if (parent.length>0 && parent!=icr.file && value!=icr.file) {
+              continue;
+            }
+            if (parent.length==0 && value!=icr.file) {
               continue;
             }
           }
 
-          if (Number(subvalue)>0 || !subvalue.includes('(')) {
-            if (icr.fields!=null && icr.fields.length>0) {
-              for (let field of icr.fields) {
-                if (subvalue.includes('\'')){
-                  subvalue=subvalue.replace(/'/g, '');
-                }
-                if (field.value==subvalue) {
-                  if (!isNaN(value)) {
-                    if (value!=field.file) break;
-                  }
-                  if (field.value!="*") {
-                    if (method=='Direct' && field.method == 'Fileman') break;
-                    if (direction == 'Write' && field.direction=='Read') break;
-                    if (direction == 'Read' && field.direction=='Write') break;
-                  }
+          if (icr.fields!=null && icr.fields.length>0) {
+            for (let field of icr.fields) {
+              if (subvalue.includes('\'')){
+                subvalue=subvalue.replace(/'/g, '');
+              }
 
-                  //hit
-                  for (let i=0; i<routines.length; i++) {
-                    if (returnable[routines[i]][icr.id]==undefined || returnable[routines[i]][icr.id]==null) {
-                      returnable[routines[i]][icr.id]=' ; Reference to '+icr.value+ ' supported by ICR # '+ icr.id + ' (';
-                    }
-                    let subvalueArray= returnable[routines[i]][icr.id].split(',');
-                    if (!subvalueArray.includes(subvalue)) returnable[routines[i]][icr.id]+=subvalue+',';
-                    request.done=true;
-                    requests[reqIndex]=request;
+              if (field.value==subvalue) {
+                if (!isNaN(value)) {
+                  //if (parent==130 && icr.id==103) console.log(field);
+                  if (value!=field.file) {
+                    continue;
                   }
-                  break;
                 }
+
+                if (field.value!="*") {
+                  if (method=='Direct' && field.method == 'Fileman') break;
+                  if (direction == 'Write' && field.direction=='Read') break;
+                  if (direction == 'Read' && field.direction=='Write') break;
+                }
+
+                //hit
+                for (let i=0; i<routines.length; i++) {
+                  if (returnable[routines[i]][icr.id]==undefined || returnable[routines[i]][icr.id]==null) {
+                    returnable[routines[i]][icr.id]=' ; Reference to '+icr.value+ ' supported by ICR # '+ icr.id + ' (';
+                  }
+                  let subvalueArray= returnable[routines[i]][icr.id].split(',');
+                  if (!subvalueArray.includes(subvalue)) returnable[routines[i]][icr.id]+=subvalue+',';
+                  request.done=true;
+                  requests[reqIndex]=request;
+                }
+                break;
               }
             }
           }
+
           if (request.done!=true && Number(subvalue)!=+subvalue) {
             if (isNaN(subvalue) && !subvalue.includes(',') && !subvalue.includes('\'')) {
               subvalue='\''+subvalue+'\'';
