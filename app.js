@@ -158,7 +158,7 @@ app.post('/api/generateIcrs', (req,res)=>{
                 subvalue=subvalue.replace(/'/g, '');
               }
 
-              if (field.value==subvalue) {
+              if (field.value==subvalue || field.value=='*') {
                 if (!isNaN(value)) {
                   //if (parent==130 && icr.id==103) console.log(field);
                   if (value!=field.file) {
