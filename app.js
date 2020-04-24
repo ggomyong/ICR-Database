@@ -179,7 +179,7 @@ app.post('/api/generateIcrs', (req,res)=>{
                   }
                   let subvalueArray= returnable[routines[i]][icr.id].split(',');
                   if (!subvalueArray.includes(subvalue)) {
-                    if (parent.length>0 && !isNaN(parent) && !isNaN(value) && parent!=value) {
+                    if (parent.length>0 && !isNaN(parent) && !isNaN(value) && parent==icr.file) {
                       subvalue='#'+value+'['+subvalue+']';
                     }
                     returnable[routines[i]][icr.id]+=subvalue+',';
@@ -261,6 +261,7 @@ app.post('/api/generateIcrs', (req,res)=>{
     }
     for (let i=0; i<routines.length; i++) {
       if (returnable[routines[i]]["NA"+request.value]==undefined || returnable[routines[i]]["NA"+request.value]==null) {
+        if (!isNaN(request.value)) request.value='File#:'+request.value;
         returnable[routines[i]]["NA"+request.value]=' ; Reference to '+request.value+ ' supported by ICR # NA (';
       }
       if (subvalue.includes(',') && !subvalue.includes('[')) subvalue='['+subvalue+']';
