@@ -139,7 +139,7 @@ app.post('/api/generateIcrs', (req,res)=>{
           if (icr.value==undefined || icr.value==null|| icr.value==''||icr.value.length==0) icr.value=icr.file;
 
           if (isNaN(value)) {
-            if (isNaN(icr.value) && icr.value != value) {
+            if (isNaN(icr.value) && icr.value != value && !icr.value.includes(value)) {
               continue;
             }
           }
