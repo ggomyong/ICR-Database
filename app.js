@@ -261,8 +261,10 @@ app.post('/api/generateIcrs', (req,res)=>{
     }
     for (let i=0; i<routines.length; i++) {
       if (returnable[routines[i]]["NA"+request.value]==undefined || returnable[routines[i]]["NA"+request.value]==null) {
-        if (!isNaN(request.value)) request.value='File#:'+request.value;
-        returnable[routines[i]]["NA"+request.value]=' ; Reference to '+request.value+ ' supported by ICR # NA (';
+        let fileNumber = request.value;
+
+        if (!isNaN(fileNumber)) fileNumber='File#:'+request.value;
+        returnable[routines[i]]["NA"+request.value]=' ; Reference to '+fileNumber+ ' supported by ICR # NA (';
       }
       if (subvalue.includes(',') && !subvalue.includes('[')) subvalue='['+subvalue+']';
       let subvalueArray= returnable[routines[i]]["NA"+request.value].split(',');
