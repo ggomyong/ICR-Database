@@ -257,7 +257,10 @@ app.post('/api/generateIcrs', (req,res)=>{
     if (icr.status.toLowerCase()=='retired') retireds.push(icr);
 
     if (icr.status.toLowerCase()=='withdrawn' || icr.status.toLowerCase()=='retired' || icr.status.toLowerCase()=='expired') continue;
-    if ((icr.expires!=undefined || icr.expires!=null) && icr.expires.length>0) continue;
+    if ((icr.expires!=undefined || icr.expires!=null) && icr.expires.length>0) {
+        retireds.push(icr);
+        continue;
+    }
     let returnArray=processIcrs(icr, requests, returnable);
     requests=returnArray[0];
     returnable=returnArray[1];
