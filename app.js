@@ -79,6 +79,152 @@ app.post('/api/upload', (req, res) => {
   });
 });
 
+function processIcrs(icr, requests, returnable) {
+  for (let reqIndex=0; reqIndex<requests.length; reqIndex++) {
+    let request=requests[reqIndex];
+    if (request.done && request.type!='R') continue;
+    let type=request.type;
+    let value=request.value;
+    value=value.replace(/^/g, '');
+    let subvalue=request.subvalue;
+    if (subvalue=='@') subvalue='';
+    let location=request.location;
+    let method=request.method;
+    let direction=request.direction;
+    let routines=request.routines;
+    let parent=request.parent;
+    if (parent==undefined || parent==null) {
+      parent='';
+    }
+
+    if (routines==null || routines==undefined) continue;
+
+    for (let i=0; i<routines.length; i++) {
+      if (returnable[routines[i]]==undefined || returnable[routines[i]]==null){
+        returnable[routines[i]] = new Object();
+      }
+    }
+
+    if (icr.type == type) {
+      if (type=='G') {
+        if (icr.value==undefined || icr.value==null|| icr.value==''||icr.value.length==0) icr.value=icr.file;
+
+        if (isNaN(value)) {
+          if (isNaN(icr.value) && icr.value != value && !icr.value.includes(value)) {
+            continue;
+          }
+        }
+        else {
+          if (parent.length>0 && parent!=icr.file && value!=icr.file) {
+            continue;
+          }
+          if (parent.length==0 && value!=icr.file) {
+            continue;
+          }
+        }
+
+        if (icr.fields!=null && icr.fields.length>0) {
+          for (let field of icr.fields) {
+            if (subvalue.includes('\'')){
+              subvalue=subvalue.replace(/'/g, '');
+            }
+
+            if (field.value==subvalue || field.value=='*') {
+              if (!isNaN(value)) {
+                //if (parent==130 && icr.id==103) console.log(field);
+                if (value!=field.file) {
+                  continue;
+                }
+              }
+
+              if (field.value!="*") {
+                if (method=='Direct' && field.method == 'Fileman') break;
+                if (direction == 'Write' && field.direction=='Read') break;
+                if (direction == 'Read' && field.direction=='Write') break;
+              }
+
+              //hit
+              for (let i=0; i<routines.length; i++) {
+                if (returnable[routines[i]][icr.id]==undefined || returnable[routines[i]][icr.id]==null) {
+                  returnable[routines[i]][icr.id]=' ; Reference to '+icr.value+ ' supported by ICR # '+ icr.id + ' (';
+                }
+                let subvalueArray= returnable[routines[i]][icr.id].split(',');
+                if (!subvalueArray.includes(subvalue)) {
+                  if (parent.length>0 && !isNaN(parent) && !isNaN(value) && parent==icr.file) {
+                    subvalue='#'+value+'['+subvalue+']';
+                  }
+                  returnable[routines[i]][icr.id]+=subvalue+',';
+                }
+                request.done=true;
+                requests[reqIndex]=request;
+              }
+              break;
+            }
+          }
+        }
+
+        if (request.done!=true && Number(subvalue)!=+subvalue) {
+          if (isNaN(subvalue) && !subvalue.includes(',') && !subvalue.includes('\'')) {
+            subvalue='\''+subvalue+'\'';
+          }
+          for (let descr of icr.description) {
+            if (descr.includes(subvalue)) {
+              //hit
+              for (let i=0; i<routines.length; i++) {
+                if (returnable[routines[i]][icr.id]==undefined || returnable[routines[i]][icr.id]==null) {
+                  returnable[routines[i]][icr.id]=' ; Reference to '+icr.value+ ' supported by ICR # '+ icr.id + ' (';
+                }
+                if (subvalue.includes(',') && !subvalue.includes('[')) subvalue='['+subvalue+']';
+                let subvalueArray= returnable[routines[i]][icr.id].split(',');
+                if (!subvalueArray.includes(subvalue)) returnable[routines[i]][icr.id]+=subvalue+',';
+              }
+              request.done=true;
+              requests[reqIndex]=request;
+            }
+          }
+        }
+      }
+      else if (type=='R') {
+        if (icr.value==value) {
+          if (subvalue=='') {
+            //hit
+            request.done=true;
+            requests[reqIndex]=request;
+            for (let i=0; i<routines.length; i++) {
+              if (returnable[routines[i]][icr.id]==undefined || returnable[routines[i]][icr.id]==null) {
+                returnable[routines[i]][icr.id]=' ; Reference to '+icr.value+ ' supported by ICR # '+ icr.id+ ' (';
+              }
+            }
+          }
+          else {
+            for (let tag of icr.tags) {
+              if (tag.includes('(')) tag=tag.split('(')[0];
+              if (tag.includes('$$')) tag=tag.split('$$')[1];
+              if (tag.includes('\r'))tag=tag.split('\r')[0];
+              if (tag==subvalue) {
+                request.done=true;
+                requests[reqIndex]=request;
+                for (let i=0; i<routines.length; i++) {
+                  if (returnable[routines[i]][icr.id]==undefined || returnable[routines[i]][icr.id]==null) {
+                    returnable[routines[i]][icr.id]=' ; Reference to '+icr.value+ ' supported by ICR # '+ icr.id+ ' (';
+                  }
+                  let subvalueArray= returnable[routines[i]][icr.id].split(',');
+                  if (!subvalueArray.includes(subvalue)) returnable[routines[i]][icr.id]+=subvalue+','
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    requests[reqIndex]=request;
+  }
+  let returnArray=[];
+  returnArray.push(requests);
+  returnArray.push(returnable);
+  return returnArray;
+}
+
 app.post('/api/generateIcrs', (req,res)=>{
   let fs = require('fs');
   let requests;
@@ -106,148 +252,21 @@ app.post('/api/generateIcrs', (req,res)=>{
     }
   }
   let returnable=new Object();
+  let retireds=[];
   for (let icr of icrs) {
+    if (icr.status.toLowerCase()=='retired') retireds.push(icr);
+
     if (icr.status.toLowerCase()=='withdrawn' || icr.status.toLowerCase()=='retired' || icr.status.toLowerCase()=='expired') continue;
     if ((icr.expires!=undefined || icr.expires!=null) && icr.expires.length>0) continue;
-    for (let reqIndex=0; reqIndex<requests.length; reqIndex++) {
-      let request=requests[reqIndex];
-      if (request.done && request.type!='R') continue;
-      let type=request.type;
-      let value=request.value;
-      value=value.replace(/^/g, '');
-      let subvalue=request.subvalue;
-      if (subvalue=='@') subvalue='';
-      let location=request.location;
-      let method=request.method;
-      let direction=request.direction;
-      let routines=request.routines;
-      let parent=request.parent;
-      if (parent==undefined || parent==null) {
-        parent='';
-      }
-
-      if (routines==null || routines==undefined) continue;
-
-      for (let i=0; i<routines.length; i++) {
-        if (returnable[routines[i]]==undefined || returnable[routines[i]]==null){
-          returnable[routines[i]] = new Object();
-        }
-      }
-
-      if (icr.type == type) {
-        if (type=='G') {
-          if (icr.value==undefined || icr.value==null|| icr.value==''||icr.value.length==0) icr.value=icr.file;
-
-          if (isNaN(value)) {
-            if (isNaN(icr.value) && icr.value != value && !icr.value.includes(value)) {
-              continue;
-            }
-          }
-          else {
-            if (parent.length>0 && parent!=icr.file && value!=icr.file) {
-              continue;
-            }
-            if (parent.length==0 && value!=icr.file) {
-              continue;
-            }
-          }
-
-          if (icr.fields!=null && icr.fields.length>0) {
-            for (let field of icr.fields) {
-              if (subvalue.includes('\'')){
-                subvalue=subvalue.replace(/'/g, '');
-              }
-
-              if (field.value==subvalue || field.value=='*') {
-                if (!isNaN(value)) {
-                  //if (parent==130 && icr.id==103) console.log(field);
-                  if (value!=field.file) {
-                    continue;
-                  }
-                }
-
-                if (field.value!="*") {
-                  if (method=='Direct' && field.method == 'Fileman') break;
-                  if (direction == 'Write' && field.direction=='Read') break;
-                  if (direction == 'Read' && field.direction=='Write') break;
-                }
-
-                //hit
-                for (let i=0; i<routines.length; i++) {
-                  if (returnable[routines[i]][icr.id]==undefined || returnable[routines[i]][icr.id]==null) {
-                    returnable[routines[i]][icr.id]=' ; Reference to '+icr.value+ ' supported by ICR # '+ icr.id + ' (';
-                  }
-                  let subvalueArray= returnable[routines[i]][icr.id].split(',');
-                  if (!subvalueArray.includes(subvalue)) {
-                    if (parent.length>0 && !isNaN(parent) && !isNaN(value) && parent==icr.file) {
-                      subvalue='#'+value+'['+subvalue+']';
-                    }
-                    returnable[routines[i]][icr.id]+=subvalue+',';
-                  }
-                  request.done=true;
-                  requests[reqIndex]=request;
-                }
-                break;
-              }
-            }
-          }
-
-          if (request.done!=true && Number(subvalue)!=+subvalue) {
-            if (isNaN(subvalue) && !subvalue.includes(',') && !subvalue.includes('\'')) {
-              subvalue='\''+subvalue+'\'';
-            }
-            for (let descr of icr.description) {
-              if (descr.includes(subvalue)) {
-                //hit
-                for (let i=0; i<routines.length; i++) {
-                  if (returnable[routines[i]][icr.id]==undefined || returnable[routines[i]][icr.id]==null) {
-                    returnable[routines[i]][icr.id]=' ; Reference to '+icr.value+ ' supported by ICR # '+ icr.id + ' (';
-                  }
-                  if (subvalue.includes(',') && !subvalue.includes('[')) subvalue='['+subvalue+']';
-                  let subvalueArray= returnable[routines[i]][icr.id].split(',');
-                  if (!subvalueArray.includes(subvalue)) returnable[routines[i]][icr.id]+=subvalue+',';
-                }
-                request.done=true;
-                requests[reqIndex]=request;
-              }
-            }
-          }
-        }
-        else if (type=='R') {
-          if (icr.value==value) {
-            if (subvalue=='') {
-              //hit
-              request.done=true;
-              requests[reqIndex]=request;
-              for (let i=0; i<routines.length; i++) {
-                if (returnable[routines[i]][icr.id]==undefined || returnable[routines[i]][icr.id]==null) {
-                  returnable[routines[i]][icr.id]=' ; Reference to '+icr.value+ ' supported by ICR # '+ icr.id+ ' (';
-                }
-              }
-            }
-            else {
-              for (let tag of icr.tags) {
-                if (tag.includes('(')) tag=tag.split('(')[0];
-                if (tag.includes('$$')) tag=tag.split('$$')[1];
-                if (tag.includes('\r'))tag=tag.split('\r')[0];
-                if (tag==subvalue) {
-                  request.done=true;
-                  requests[reqIndex]=request;
-                  for (let i=0; i<routines.length; i++) {
-                    if (returnable[routines[i]][icr.id]==undefined || returnable[routines[i]][icr.id]==null) {
-                      returnable[routines[i]][icr.id]=' ; Reference to '+icr.value+ ' supported by ICR # '+ icr.id+ ' (';
-                    }
-                    let subvalueArray= returnable[routines[i]][icr.id].split(',');
-                    if (!subvalueArray.includes(subvalue)) returnable[routines[i]][icr.id]+=subvalue+','
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-      requests[reqIndex]=request;
-    }
+    let returnArray=processIcrs(icr, requests, returnable);
+    requests=returnArray[0];
+    returnable=returnArray[1];
+  }
+  // Lower priority
+  for (let retired of retireds) {
+    let returnArray=processIcrs(retired, requests, returnable);
+    requests=returnArray[0];
+    returnable=returnArray[1];
   }
 
   for (let i=0; i<requests.length; i++) {
