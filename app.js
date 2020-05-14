@@ -254,8 +254,6 @@ app.post('/api/generateIcrs', (req,res)=>{
   let returnable=new Object();
   let retireds=[];
   for (let icr of icrs) {
-    if (icr.status.toLowerCase()=='retired') retireds.push(icr);
-
     if (icr.status.toLowerCase()=='withdrawn' || icr.status.toLowerCase()=='retired' || icr.status.toLowerCase()=='expired') continue;
     if ((icr.expires!=undefined || icr.expires!=null) && icr.expires.length>0) {
         retireds.push(icr);
