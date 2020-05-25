@@ -316,7 +316,7 @@ app.post('/api/generateIcrs', (req,res)=>{
           break;
         case 1:
           if (str.length>240) {
-            str=str.substring(0,120)+'...'str.substring(str.length-120,str.length);
+            str=str.substring(0,120)+'...'+str.substring(str.length-120,str.length);
           }
           break;
         case 2:
