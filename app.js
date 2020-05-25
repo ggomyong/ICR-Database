@@ -132,7 +132,7 @@ function processIcrs(icr, requests, returnable) {
             if (field.value==subvalue || field.value=='*') {
               if (!isNaN(value)) {
                 //if (parent==130 && icr.id==103) console.log(field);
-                if (value!=field.file) {
+                if (value!=field.file && parent!=field.file) {
                   continue;
                 }
               }
@@ -228,12 +228,20 @@ function processIcrs(icr, requests, returnable) {
 app.post('/api/generateIcrs', (req,res)=>{
   let fs = require('fs');
   let requests;
+  let parameter;
+  let fieldPrint=2;
 
   try {
     requests=JSON.parse(req.body.requests);
+    parameter=JSON.parse(req.body.parameter);
+    fieldPrint=parameter.fieldPrint;
   }
   catch {
     requests=req.body.requests;
+  }
+
+  if (fieldPrint==undefined || fieldPrint==null || fieldPrint=='') {
+    fieldPrint=2;
   }
 
   // first read all ICRs
@@ -302,6 +310,19 @@ app.post('/api/generateIcrs', (req,res)=>{
     reformed.push(" ; -------------------------------------------");
     Object.keys(returnable[key]).forEach(function (k1,i1){
       let str=returnable[key][k1];
+      switch(fieldPrint) {
+        case 0:
+          str=str.substring(0,str.indexOf('('));
+          break;
+        case 1:
+          if (str.length>240) {
+            str=str.substring(0,120)+'...'str.substring(str.length-120,str.length);
+          }
+          break;
+        case 2:
+        default:
+          break;
+      }
       if (str.slice(-1)==',') {
         str=str.slice(0,-1)+')';
         //returnable[key][k1]=str;
