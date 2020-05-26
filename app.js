@@ -228,20 +228,16 @@ function processIcrs(icr, requests, returnable) {
 app.post('/api/generateIcrs', (req,res)=>{
   let fs = require('fs');
   let requests;
-  let parameter;
+  let configuration;
   let fieldPrint=2;
 
   try {
     requests=JSON.parse(req.body.requests);
-    parameter=JSON.parse(req.body.parameter);
-    fieldPrint=parameter.fieldPrint;
+    configuration=JSON.parse(req.body.configuration);
+    fieldPrint=configuration.fieldPrint;
   }
   catch {
     requests=req.body.requests;
-  }
-
-  if (fieldPrint==undefined || fieldPrint==null || fieldPrint=='') {
-    fieldPrint=2;
   }
 
   // first read all ICRs
@@ -310,13 +306,14 @@ app.post('/api/generateIcrs', (req,res)=>{
     reformed.push(" ; -------------------------------------------");
     Object.keys(returnable[key]).forEach(function (k1,i1){
       let str=returnable[key][k1];
+
       switch(fieldPrint) {
         case 0:
-          str=str.substring(0,str.indexOf('('));
+          str=str.substring(0,str.indexOf('(',str.indexOf('#')));
           break;
         case 1:
           if (str.length>240) {
-            str=str.substring(0,120)+'...'+str.substring(str.length-120,str.length);
+            str=str.substring(0,str.indexOf(',',110))+'...'+str.substring(str.indexOf(',',str.length-120),str.length);
           }
           break;
         case 2:
@@ -330,6 +327,9 @@ app.post('/api/generateIcrs', (req,res)=>{
       else if (str.slice(-1)=='(') {
         str=str.slice(0,-2);
         //returnable[key][k1]=str;
+      }
+      else if (str.slice(-1)==' ') {
+        str=str.slice(0,-1);
       }
       reformed.push(str);
     });
