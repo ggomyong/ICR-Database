@@ -287,15 +287,15 @@ app.post('/api/generateIcrs', (req,res)=>{
       subvalue='\''+subvalue+'\'';
     }
     for (let i=0; i<routines.length; i++) {
-      if (returnable[routines[i]]["NA"+request.value]==undefined || returnable[routines[i]]["NA"+request.value]==null) {
+      if (returnable[routines[i]]["NONE"+request.value]==undefined || returnable[routines[i]]["NONE"+request.value]==null) {
         let fileNumber = request.value;
 
         if (!isNaN(fileNumber)) fileNumber='File#:'+request.value;
-        returnable[routines[i]]["NA"+request.value]=' ; Reference to '+fileNumber+ ' supported by ICR # NA (';
+        returnable[routines[i]]["NONE"+request.value]=' ; Reference to '+fileNumber+ ' supported by ICR # NONE (';
       }
       if (subvalue.includes(',') && !subvalue.includes('[')) subvalue='['+subvalue+']';
-      let subvalueArray= returnable[routines[i]]["NA"+request.value].split(',');
-      if (!subvalueArray.includes(subvalue)) returnable[routines[i]]["NA"+request.value]+=subvalue+',';
+      let subvalueArray= returnable[routines[i]]["NONE"+request.value].split(',');
+      if (!subvalueArray.includes(subvalue)) returnable[routines[i]]["NONE"+request.value]+=subvalue+',';
     }
   }
   let reformed=new Array();
