@@ -132,7 +132,10 @@ function processIcrs(icr, requests, returnable) {
             if (field.value==subvalue || field.value=='*') {
               if (!isNaN(value)) {
                 //if (parent==130 && icr.id==103) console.log(field);
-                if (value!=field.file && parent!=field.file) {
+                if (field.value=='*' && parent==field.file) {
+                  //pass
+                }
+                else if (value!=field.file) {
                   continue;
                 }
               }
