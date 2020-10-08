@@ -2,3 +2,4 @@
 database/*
 icrDatabase.bat
 nssm.exe
+*.7z
