@@ -83,6 +83,7 @@ function processIcrs(icr, requests, returnable) {
   for (let reqIndex=0; reqIndex<requests.length; reqIndex++) {
     let request=requests[reqIndex];
     if (request.done && request.type!='R') continue;
+    if (request.done && request.type=='R' && icr.status.toLowerCase()=='retired') continue;
     let type=request.type;
     let value=request.value;
     value=value.replace(/^/g, '');
@@ -149,7 +150,7 @@ function processIcrs(icr, requests, returnable) {
               //hit
               for (let i=0; i<routines.length; i++) {
                 if (returnable[routines[i]][icr.id]==undefined || returnable[routines[i]][icr.id]==null) {
-                  returnable[routines[i]][icr.id]=' ; Reference to '+icr.value+ ' supported by ICR # '+ icr.id + ' (';
+                  returnable[routines[i]][icr.id]=' ; Reference to '+icr.value+ ' in ICR #'+ icr.id + ' (';
                 }
                 let subvalueArray= returnable[routines[i]][icr.id].split(',');
                 if (!subvalueArray.includes(subvalue)) {
@@ -175,7 +176,10 @@ function processIcrs(icr, requests, returnable) {
               //hit
               for (let i=0; i<routines.length; i++) {
                 if (returnable[routines[i]][icr.id]==undefined || returnable[routines[i]][icr.id]==null) {
-                  returnable[routines[i]][icr.id]=' ; Reference to '+icr.value+ ' supported by ICR # '+ icr.id + ' (';
+                  returnable[routines[i]][icr.id]=' ; Reference to '+icr.value+ ' in ICR #'+ icr.id + ' (';
+                  if (icr.status.toLowerCase()=='retired') {
+                    returnable[routines[i]][icr.id]+='--retired--';
+                  }
                 }
                 if (subvalue.includes(',') && !subvalue.includes('[')) subvalue='['+subvalue+']';
                 let subvalueArray= returnable[routines[i]][icr.id].split(',');
@@ -195,7 +199,10 @@ function processIcrs(icr, requests, returnable) {
             requests[reqIndex]=request;
             for (let i=0; i<routines.length; i++) {
               if (returnable[routines[i]][icr.id]==undefined || returnable[routines[i]][icr.id]==null) {
-                returnable[routines[i]][icr.id]=' ; Reference to '+icr.value+ ' supported by ICR # '+ icr.id+ ' (';
+                returnable[routines[i]][icr.id]=' ; Reference to ^'+icr.value+ ' in ICR #'+ icr.id;
+                if (icr.status.toLowerCase()=='retired') {
+                  returnable[routines[i]][icr.id]+=' (--retired--)';
+                }
               }
             }
           }
@@ -209,10 +216,19 @@ function processIcrs(icr, requests, returnable) {
                 requests[reqIndex]=request;
                 for (let i=0; i<routines.length; i++) {
                   if (returnable[routines[i]][icr.id]==undefined || returnable[routines[i]][icr.id]==null) {
-                    returnable[routines[i]][icr.id]=' ; Reference to '+icr.value+ ' supported by ICR # '+ icr.id+ ' (';
+                    returnable[routines[i]][icr.id]=' ; Reference to  in ICR #'+ icr.id;
+                    if (icr.status.toLowerCase()=='retired') {
+                      returnable[routines[i]][icr.id]+=' (--retired--)';
+                    }
                   }
                   let subvalueArray= returnable[routines[i]][icr.id].split(',');
-                  if (!subvalueArray.includes(subvalue)) returnable[routines[i]][icr.id]+=subvalue+','
+                  if (!subvalueArray.includes(subvalue)) {
+                    let splits=returnable[routines[i]][icr.id].split(' in ICR #');
+                    if (splits[0].includes('^')) splits[0]+=','
+                    splits[0]+=subvalue+'^'+icr.value
+                    //returnable[routines[i]][icr.id]+=subvalue+',';
+                    returnable[routines[i]][icr.id]=splits[0] + ' in ICR #'+icr.id
+                  }
                 }
               }
             }
@@ -294,7 +310,7 @@ app.post('/api/generateIcrs', (req,res)=>{
         let fileNumber = request.value;
 
         if (!isNaN(fileNumber)) fileNumber='File#:'+request.value;
-        returnable[routines[i]]["NONE"+request.value]=' ; Reference to '+fileNumber+ ' supported by ICR # NONE (';
+        returnable[routines[i]]["NONE"+request.value]=' ; Reference to '+fileNumber+ ' in ICR #NONE (';
       }
       if (subvalue.includes(',') && !subvalue.includes('[')) subvalue='['+subvalue+']';
       let subvalueArray= returnable[routines[i]]["NONE"+request.value].split(',');
